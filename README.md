@@ -2,6 +2,9 @@
 
 A modern buff timer system for OpenMW that displays active spell effects with radial swipe cooldown visualization in the top-right corner of your screen.
 
+![image](https://github.com/user-attachments/assets/0a650c4b-29f4-495d-b154-39305783de4a)
+
+
 ## Features
 
 - **Visual Buff/Debuff Display**: Shows all active magical effects with custom icons
