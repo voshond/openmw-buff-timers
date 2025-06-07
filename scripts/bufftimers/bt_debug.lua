@@ -1,7 +1,11 @@
 local storage = nil
+local settings = nil
 
 pcall(function()
     storage = require('openmw.storage')
+    if storage then
+        settings = storage.playerSection("SettingsBuffTimersDebug")
+    end
 end)
 
 -- Debug module to centralize all logging functionality for Buff Timers
@@ -9,30 +13,16 @@ local Debug = {}
 
 -- Main logging function that checks if debug is enabled before printing
 function Debug.log(module, message)
-    if storage then
-        local settings = storage.playerSection("SettingsBuffTimersDebug")
-        local debugEnabled = settings and settings:get("enableDebugLogging")
-        
-        -- Always print this to see what's happening
-        if module == "SETTINGS_CHECK" then
-            print("[BuffTimer:SETTINGS_CHECK] Debug enabled: " .. tostring(debugEnabled))
-        end
-        
-        if debugEnabled then
-            print("[BuffTimer:" .. module .. "] " .. tostring(message))
-        end
+    if settings and settings:get("enableDebugLogging") then
+        print("[BuffTimer:" .. module .. "] " .. tostring(message))
     end
 end
 
 -- Frame-based logging for high-frequency updates (UI refreshes, animations, etc.)
 -- This is separate from regular debug logging to avoid spamming the console
 function Debug.frameLog(module, message)
-    if storage then
-        local settings = storage.playerSection("SettingsBuffTimersDebug")
-        local frameEnabled = settings and settings:get("enableFrameLogging")
-        if frameEnabled then
-            print("[BuffTimer:FRAME:" .. module .. "] " .. tostring(message))
-        end
+    if settings and settings:get("enableFrameLogging") then
+        print("[BuffTimer:FRAME:" .. module .. "] " .. tostring(message))
     end
 end
 
@@ -73,14 +63,12 @@ end
 
 -- Function to check if debug logging is enabled
 function Debug.isEnabled()
-    local settings = storage.playerSection("SettingsBuffTimersDebug")
-    return settings and settings:get("enableDebugLogging")
+    return settings and settings:get("enableDebugLogging") or false
 end
 
 -- Function to check if frame logging is enabled
 function Debug.isFrameLoggingEnabled()
-    local settings = storage.playerSection("SettingsBuffTimersDebug")
-    return settings and settings:get("enableFrameLogging")
+    return settings and settings:get("enableFrameLogging") or false
 end
 
 return Debug 

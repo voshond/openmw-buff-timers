@@ -1,5 +1,3 @@
-print("BuffTimer: Starting script load...")
-
 local ui = require("openmw.ui")
 local self = require("openmw.self")
 local types = require("openmw.types")
@@ -10,25 +8,25 @@ local I = require("openmw.interfaces")
 local time = require("openmw_aux.time")
 local storage = require("openmw.storage")
 
-print("BuffTimer: All modules loaded successfully")
-
 -- Load the actual debug module
 local Debug = require("scripts.bufftimers.bt_debug")
 
-print("BuffTimer: Debug module loaded")
+Debug.ui("Starting script load...")
+Debug.ui("All modules loaded successfully")
+Debug.ui("Debug module loaded")
 
 -- Load settings module to register the settings page
 local playerSettings = nil
 pcall(function()
     require("scripts.bufftimers.bt_settings")
     playerSettings = storage.playerSection("SettingsBuffTimers")
-    print("BuffTimer: Settings module loaded successfully")
+    Debug.ui("Settings module loaded successfully")
 end)
 
 -- Buff Timer UI Implementation
 -- Based on omwMagicTimeHud for spell handling and voshondsQuickSelect for UI patterns
 
-print("BuffTimer: Script starting - basic test")
+Debug.ui("Script starting - basic test")
 Debug.ui("Script loading...")
 
 local mfxRecord = core.magic.effects.records
@@ -83,7 +81,7 @@ local function getRadialOpacity()
     return settings:get("radialOpacity")
 end
 
-print("BuffTimer: Settings functions initialized")
+Debug.ui("Settings functions initialized")
 
 -- Colors
 local colorIcon = util.color.rgb(1.0, 1.0, 1.0) -- Full brightness white for crisp icons
@@ -268,10 +266,10 @@ local function getEffectDisplayName(effect)
     local baseName = effectRecord.name or effect.id
     
     -- Debug logging to see what we're working with
-    print("BuffTimer: Effect ID: " .. tostring(effect.id))
-    print("BuffTimer: Effect attribute: " .. tostring(effect.attribute))
-    print("BuffTimer: Effect affectedAttribute: " .. tostring(effect.affectedAttribute))
-    print("BuffTimer: Base name: " .. tostring(baseName))
+    Debug.effects("Effect ID: " .. tostring(effect.id))
+    Debug.effects("Effect attribute: " .. tostring(effect.attribute))
+    Debug.effects("Effect affectedAttribute: " .. tostring(effect.affectedAttribute))
+    Debug.effects("Base name: " .. tostring(baseName))
     
     -- Special handling for attribute-based effects
     if effect.id == "fortifyattribute" then
@@ -311,10 +309,10 @@ local function getEffectDisplayName(effect)
             else
                 attrName = "Attr" .. tostring(attrId)
             end
-            print("BuffTimer: Found attribute ID " .. tostring(attrId) .. " -> " .. attrName)
+            Debug.effects("Found attribute ID " .. tostring(attrId) .. " -> " .. attrName)
             return attrName -- Just return the attribute name, no "Fortify" prefix
         else
-            print("BuffTimer: No attribute ID found in effect")
+            Debug.effects("No attribute ID found in effect")
         end
     end
     
@@ -336,23 +334,23 @@ end
 
 -- Function to create a buff icon with timer
 local function createBuffIcon(effectId, durationLeft, effect)
-    print("BuffTimer: Creating buff icon for effect: " .. tostring(effectId))
+    Debug.ui("Creating buff icon for effect: " .. tostring(effectId))
     
     if not mfxRecord[effectId] then
-        print("BuffTimer: No record found for effect ID: " .. tostring(effectId))
+        Debug.warning("UI", "No record found for effect ID: " .. tostring(effectId))
         return nil
     end
     
     if not mfxRecord[effectId].icon then
-        print("BuffTimer: No icon found for effect ID: " .. tostring(effectId))
+        Debug.warning("UI", "No icon found for effect ID: " .. tostring(effectId))
         return nil
     end
     
-    print("BuffTimer: Effect icon path: " .. mfxRecord[effectId].icon)
+    Debug.ui("Effect icon path: " .. mfxRecord[effectId].icon)
     
     local iconTexture = getTexture(mfxRecord[effectId].icon)
     if not iconTexture then
-        print("BuffTimer: Failed to load texture for effect: " .. tostring(effectId))
+        Debug.error("UI", "Failed to load texture for effect: " .. tostring(effectId))
         return nil
     end
     
@@ -487,9 +485,9 @@ local function createBuffIcon(effectId, durationLeft, effect)
         radialTexture = radialSwipe.createRadialWipe(effect)
         if radialTexture then
             radialOverlay = radialSwipe.createOverlay(radialTexture, innerIconSize.x, effect.durationLeft, effect.duration)
-            print("BuffTimer: Created radial swipe overlay for effect: " .. effectId .. " (Size: " .. innerIconSize.x .. "px, Color based on " .. math.floor((effect.durationLeft/effect.duration)*100) .. "% remaining)")
+            Debug.radial("Created radial swipe overlay for effect: " .. effectId .. " (Size: " .. innerIconSize.x .. "px, Color based on " .. math.floor((effect.durationLeft/effect.duration)*100) .. "% remaining)")
         else
-            print("BuffTimer: Failed to create radial swipe for effect: " .. effectId)
+            Debug.warning("RADIAL", "Failed to create radial swipe for effect: " .. effectId)
         end
     end
     
@@ -532,7 +530,7 @@ local function createBuffIcon(effectId, durationLeft, effect)
         }
     }
     
-    print("BuffTimer: Created buff icon successfully with duration: " .. formatDuration(durationLeft))
+    Debug.ui("Created buff icon successfully with duration: " .. formatDuration(durationLeft))
     return {
         effectId = effectId,
         durationLeft = durationLeft,
@@ -577,10 +575,10 @@ local function updateBuffDisplay()
     -- Process each active spell's effects
     for _, activeSpell in pairs(activeSpells) do
         if activeSpell.effects then
-            print("BuffTimer: Found spell with effects")
+            Debug.frameLog("EFFECTS", "Found spell with effects")
             for _, effect in pairs(activeSpell.effects) do
                 if effect.duration and effect.durationLeft and effect.durationLeft > 0 then
-                    print("BuffTimer: Found effect with duration: " .. effect.id .. " (" .. effect.durationLeft .. "s)")
+                    Debug.frameLog("EFFECTS", "Found effect with duration: " .. effect.id .. " (" .. effect.durationLeft .. "s)")
                     
                                         -- Create unique buff identifier that includes attribute for fortifyattribute effects
                     local buffId = effect.id
@@ -602,7 +600,7 @@ local function updateBuffDisplay()
                     
                     if existingBuff then
                         -- Update existing buff
-                        print("BuffTimer: Updating existing buff")
+                        Debug.frameLog("UPDATE", "Updating existing buff")
                         existingBuff.durationLeft = effect.durationLeft
                         existingBuff.text.props.text = formatDuration(effect.durationLeft)
                         -- Update alpha for blinking when low
@@ -628,7 +626,7 @@ local function updateBuffDisplay()
                                     existingBuff.radialOverlay.props.alpha = 0.95
                                 end
                                 
-                                print("BuffTimer: Updated radial swipe for existing buff (" .. math.floor(timePercent*100) .. "% remaining)")
+                                Debug.frameLog("RADIAL", "Updated radial swipe for existing buff (" .. math.floor(timePercent*100) .. "% remaining)")
                             end
                         end
                         
@@ -684,7 +682,7 @@ local function updateBuffDisplay()
                         newBuffs[buffIndex] = existingBuff
                     else
                         -- Create new buff
-                        print("BuffTimer: Creating new buff with ID: " .. buffId)
+                        Debug.update("Creating new buff with ID: " .. buffId)
                         local newBuff = createBuffIcon(effect.id, effect.durationLeft, effect)
                         if newBuff then
                             newBuff.buffId = buffId -- Store the unique buff ID
@@ -706,7 +704,7 @@ local function updateBuffDisplay()
         return a.durationLeft > b.durationLeft -- Longest duration first (rightmost)
     end)
     
-    print("BuffTimer: Found " .. #activeBuffs .. " active buffs")
+    Debug.update("Found " .. #activeBuffs .. " active buffs")
     
     -- Create UI content array (reverse order since we want oldest on right)
     local contentArray = {}
@@ -721,21 +719,18 @@ local function updateBuffDisplay()
     
     -- Update the UI
     if root and root.layout and root.layout.content and root.layout.content['buffContainer'] then
-        print("BuffTimer: Updating UI with " .. #contentArray .. " elements")
+        Debug.frameLog("UI", "Updating UI with " .. #contentArray .. " elements")
         root.layout.content['buffContainer'].content = ui.content(contentArray)
         root:update()
-        print("BuffTimer: UI updated successfully")
+        Debug.frameLog("UI", "UI updated successfully")
     else
-        print("BuffTimer: UI structure not available for update")
+        Debug.warning("UI", "UI structure not available for update")
     end
 end
 
 -- Function to recreate UI when settings change (defined after updateBuffDisplay)
 local function onSettingsChanged()
     print("[BuffTimer] Settings changed - redrawing buff display") -- Always print this
-    
-    -- Test what debug setting is returning
-    Debug.log("SETTINGS_CHECK", "Testing debug setting value")
     
     Debug.ui("Settings changed - redrawing buff display")
     
@@ -795,6 +790,5 @@ pcall(function()
     visualSettings:subscribe(async:callback(onSettingsChanged))
     debugSettings:subscribe(async:callback(onSettingsChanged))
     
-    print("[BuffTimer] Subscribed to all settings sections for buff display redraw")
     Debug.ui("Subscribed to all settings sections for buff display redraw")
 end) 
