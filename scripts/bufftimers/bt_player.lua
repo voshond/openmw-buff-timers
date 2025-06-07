@@ -1,3 +1,5 @@
+print("BuffTimer: Starting script load...")
+
 local ui = require("openmw.ui")
 local self = require("openmw.self")
 local types = require("openmw.types")
@@ -6,20 +8,82 @@ local async = require("openmw.async")
 local core = require("openmw.core")
 local I = require("openmw.interfaces")
 local time = require("openmw_aux.time")
+local storage = require("openmw.storage")
 
--- Buff Timer UI Implementation - DEBUG VERSION
+print("BuffTimer: All modules loaded successfully")
+
+-- Load the actual debug module
+local Debug = require("scripts.bufftimers.bt_debug")
+
+print("BuffTimer: Debug module loaded")
+
+-- Load settings module to register the settings page
+local playerSettings = nil
+pcall(function()
+    require("scripts.bufftimers.bt_settings")
+    playerSettings = storage.playerSection("SettingsBuffTimers")
+    print("BuffTimer: Settings module loaded successfully")
+end)
+
+-- Buff Timer UI Implementation
 -- Based on omwMagicTimeHud for spell handling and voshondsQuickSelect for UI patterns
 
-print("BuffTimer: Script loading...")
+print("BuffTimer: Script starting - basic test")
+Debug.ui("Script loading...")
 
 local mfxRecord = core.magic.effects.records
 local xy = util.vector2
 
--- UI Configuration
-local ICON_SIZE = 24
-local TEXT_SIZE = 8
+-- UI Configuration constants
 local PADDING = 4
-local UPDATE_INTERVAL = 0.5
+
+-- Function to get current settings values (reads fresh each time)
+local function getIconSize()
+    local settings = storage.playerSection("SettingsBuffTimersMain")
+    return settings:get("iconSize")
+end
+
+local function getTextSize()
+    local settings = storage.playerSection("SettingsBuffTimersVisual")
+    return settings:get("textSize")
+end
+
+local function getTimerTextSize()
+    local settings = storage.playerSection("SettingsBuffTimersVisual")
+    return settings:get("timerTextSize")
+end
+
+local function getUpdateInterval()
+    local settings = storage.playerSection("SettingsBuffTimersMain")
+    return settings:get("updateInterval")
+end
+
+local function isModEnabled()
+    local settings = storage.playerSection("SettingsBuffTimersMain")
+    return settings:get("enableMod")
+end
+
+local function isRadialSwipeEnabled()
+    local settings = storage.playerSection("SettingsBuffTimersMain")
+    return settings:get("enableRadialSwipe")
+end
+
+local function isTimeTextEnabled()
+    local settings = storage.playerSection("SettingsBuffTimersVisual")
+    return settings:get("showTimeText")
+end
+
+local function isEffectNamesEnabled()
+    local settings = storage.playerSection("SettingsBuffTimersVisual")
+    return settings:get("showEffectNames")
+end
+
+local function getRadialOpacity()
+    local settings = storage.playerSection("SettingsBuffTimersVisual")
+    return settings:get("radialOpacity")
+end
+
+print("BuffTimer: Settings functions initialized")
 
 -- Colors
 local colorIcon = util.color.rgb(1.0, 1.0, 1.0) -- Full brightness white for crisp icons
@@ -27,21 +91,20 @@ local colorText = util.color.hex('dfc89e')
 local colorBackground = util.color.rgba(0, 0, 0, 0.7)
 
 -- UI Layout
-local xyIcon = xy(ICON_SIZE, ICON_SIZE)
 local screenSize = ui.screenSize()
 -- Position at top-right - calculate position so container doesn't go off-screen
 -- We'll position it and let the container align itself properly
 local rootPosition = xy(screenSize.x - 400, 50) -- Give enough space for the container
 
-print("BuffTimer: Screen size: " .. screenSize.x .. "x" .. screenSize.y)
-print("BuffTimer: Root position: " .. rootPosition.x .. ", " .. rootPosition.y)
+Debug.ui("Screen size: " .. screenSize.x .. "x" .. screenSize.y)
+Debug.ui("Root position: " .. rootPosition.x .. ", " .. rootPosition.y)
 
 -- Texture cache to avoid recreating textures
 local textureCache = {}
 
 local function getTexture(path)
     if not textureCache[path] and path then
-        print("BuffTimer: Loading texture: " .. path)
+        Debug.ui("Loading texture: " .. path)
         textureCache[path] = ui.texture({ path = path })
     end
     return textureCache[path]
@@ -70,7 +133,7 @@ radialSwipe.createRadialWipe = function(effect)
     local row = math.floor(position / 20) -- Y position in 20x20 grid  
     local rowOffset = row * offset
     
-    print("BuffTimer: Radial swipe - Duration: " .. dur .. "s, Left: " .. durL .. "s, Position: " .. position .. ", Col: " .. col .. ", Row: " .. row)
+    Debug.radial("Duration: " .. dur .. "s, Left: " .. durL .. "s, Position: " .. position .. ", Col: " .. col .. ", Row: " .. row)
     
     local texture = ui.texture {
         path = myAtlas,
@@ -91,18 +154,22 @@ radialSwipe.createOverlay = function(atlasTexture, iconSize, durationLeft, origi
     local overlayColor
     local overlayAlpha
     
+    -- Get opacity setting (default to 90%)
+    local baseOpacity = getRadialOpacity()
+    baseOpacity = baseOpacity / 100.0 -- Convert percentage to decimal
+    
     if timePercent > 0.5 then
         -- Green for >50% time remaining
         overlayColor = util.color.rgb(0.1, 1.0, 0.1)
-        overlayAlpha = 0.9
+        overlayAlpha = baseOpacity
     elseif timePercent > 0.25 then
         -- Yellow for 25-50% time remaining  
         overlayColor = util.color.rgb(1.0, 1.0, 0.1)
-        overlayAlpha = 0.9
+        overlayAlpha = baseOpacity
     else
         -- Red for <25% time remaining
         overlayColor = util.color.rgb(1.0, 0.1, 0.1)
-        overlayAlpha = 0.95
+        overlayAlpha = math.min(1.0, baseOpacity + 0.05) -- Slightly more opaque for urgency
     end
     
     local radialSwipeOverlay = {
@@ -122,43 +189,10 @@ radialSwipe.createOverlay = function(atlasTexture, iconSize, durationLeft, origi
     return radialSwipeOverlay
 end
 
--- Create a simple test UI first
-print("BuffTimer: Creating test UI...")
-local testUI = nil
 
-local function createTestUI()
-    local success, result = pcall(function()
-        return ui.create{
-            layer = 'HUD',
-            props = { 
-                position = xy(screenSize.x / 2 - 100, screenSize.y / 2 - 50),
-                visible = true
-            },
-            content = ui.content{{
-                type = ui.TYPE.Text,
-                props = {
-                    text = "BUFF TIMER TEST - UI WORKING!",
-                    textSize = 24,
-                    textColor = util.color.rgb(1, 1, 0),
-                    textShadow = true
-                }
-            }}
-        }
-    end)
-    
-    if success then
-        print("BuffTimer: Test UI created successfully at center screen")
-        return result
-    else
-        print("BuffTimer: Failed to create test UI: " .. tostring(result))
-        return nil
-    end
-end
-
-testUI = createTestUI()
 
 -- Create the main UI container
-print("BuffTimer: Creating UI root...")
+Debug.ui("Creating UI root...")
 local root = nil
 
 -- Try to create UI with error handling
@@ -187,17 +221,17 @@ local function createUI()
                     arrange = ui.ALIGNMENT.End, -- Arrange from right
                     horizontal = true,
                     -- Dynamic size - will be updated based on actual buff count
-                    size = xy(800, ICON_SIZE),
+                    size = xy(800, getIconSize()),
                 }
             }}
         }
     end)
     
     if success then
-        print("BuffTimer: UI created successfully with padding")
+        Debug.ui("UI created successfully with padding")
         return result
     else
-        print("BuffTimer: Failed to create UI: " .. tostring(result))
+        Debug.error("UI", "Failed to create UI: " .. tostring(result))
         return nil
     end
 end
@@ -322,9 +356,15 @@ local function createBuffIcon(effectId, durationLeft, effect)
         return nil
     end
     
+    -- Get current settings values
+    local currentIconSize = getIconSize()
+    local currentTextSize = getTextSize()
+    local currentTimerTextSize = getTimerTextSize()
+    
     -- Icon padding like voshondsQuickSelect (2px padding on each side)
     local iconPadding = 2
-    local innerIconSize = xy(ICON_SIZE - iconPadding * 2, ICON_SIZE - iconPadding * 2)
+    local innerIconSize = xy(currentIconSize - iconPadding * 2, currentIconSize - iconPadding * 2)
+    local xyIcon = xy(currentIconSize, currentIconSize)
     
     -- Get specific effect name using the enhanced function
     local effectName = getEffectDisplayName(effect)
@@ -374,7 +414,7 @@ local function createBuffIcon(effectId, durationLeft, effect)
         template = I.MWUI.templates.textNormal,
         props = {
             text = firstWord,
-            textSize = TEXT_SIZE - 2,
+            textSize = currentTextSize - 2,
             relativePosition = util.vector2(0.05, 0.05), -- Top-left corner
             anchor = util.vector2(0.05, 0.05),
             arrange = ui.ALIGNMENT.Start,
@@ -398,7 +438,7 @@ local function createBuffIcon(effectId, durationLeft, effect)
             template = I.MWUI.templates.textNormal,
             props = {
                 text = secondWord,
-                textSize = TEXT_SIZE - 2,
+                textSize = currentTextSize - 2,
                 relativePosition = util.vector2(0.05, 0.30), -- More padding between lines
                 anchor = util.vector2(0.05, 0.30),
                 arrange = ui.ALIGNMENT.Start,
@@ -416,7 +456,7 @@ local function createBuffIcon(effectId, durationLeft, effect)
         template = I.MWUI.templates.textNormal,
         props = {
             text = formatDuration(durationLeft),
-            textSize = TEXT_SIZE,
+            textSize = currentTimerTextSize,
             relativePosition = util.vector2(0.8, 0.8), -- Bottom-right corner
             anchor = util.vector2(0.8, 0.8),
             arrange = ui.ALIGNMENT.End,
@@ -440,14 +480,17 @@ local function createBuffIcon(effectId, durationLeft, effect)
         }
     }
     
-    -- Create radial swipe overlay (use inner icon size to match the actual icon)
-    local radialTexture = radialSwipe.createRadialWipe(effect)
+    -- Create radial swipe overlay (if enabled in settings)
+    local radialTexture = nil
     local radialOverlay = nil
-    if radialTexture and effect.duration then
-        radialOverlay = radialSwipe.createOverlay(radialTexture, innerIconSize.x, effect.durationLeft, effect.duration)
-        print("BuffTimer: Created radial swipe overlay for effect: " .. effectId .. " (Size: " .. innerIconSize.x .. "px, Color based on " .. math.floor((effect.durationLeft/effect.duration)*100) .. "% remaining)")
-    else
-        print("BuffTimer: Failed to create radial swipe for effect: " .. effectId)
+    if isRadialSwipeEnabled() and effect.duration then
+        radialTexture = radialSwipe.createRadialWipe(effect)
+        if radialTexture then
+            radialOverlay = radialSwipe.createOverlay(radialTexture, innerIconSize.x, effect.durationLeft, effect.duration)
+            print("BuffTimer: Created radial swipe overlay for effect: " .. effectId .. " (Size: " .. innerIconSize.x .. "px, Color based on " .. math.floor((effect.durationLeft/effect.duration)*100) .. "% remaining)")
+        else
+            print("BuffTimer: Failed to create radial swipe for effect: " .. effectId)
+        end
     end
     
     -- Build content array for the container
@@ -458,12 +501,17 @@ local function createBuffIcon(effectId, durationLeft, effect)
         table.insert(contentElements, radialOverlay)
     end
     
-    -- Add text elements on top
-    table.insert(contentElements, firstLineText)
-    if secondLineText then
-        table.insert(contentElements, secondLineText)
+    -- Add text elements on top (if enabled in settings)
+    if isEffectNamesEnabled() then
+        table.insert(contentElements, firstLineText)
+        if secondLineText then
+            table.insert(contentElements, secondLineText)
+        end
     end
-    table.insert(contentElements, timerText)
+    
+    if isTimeTextEnabled() then
+        table.insert(contentElements, timerText)
+    end
     
     -- Create bordered container using MWUI borders template like voshondsQuickSelect
     local buffIcon = {
@@ -502,10 +550,15 @@ local activeBuffs = {}
 
 -- Function to update buff display
 local function updateBuffDisplay()
-    print("BuffTimer: Updating buff display...")
+    -- Check if mod is enabled
+    if not isModEnabled() then
+        return
+    end
+    
+    Debug.frameLog("UPDATE", "Updating buff display...")
     
     if not root then
-        print("BuffTimer: Root UI not available, skipping update")
+        Debug.warning("UPDATE", "Root UI not available, skipping update")
         return
     end
     
@@ -515,11 +568,11 @@ local function updateBuffDisplay()
     -- Get active spells and their effects
     local activeSpells = types.Actor.activeSpells(self)
     if not activeSpells then
-        print("BuffTimer: No active spells found")
+        Debug.frameLog("EFFECTS", "No active spells found")
         return
     end
     
-    print("BuffTimer: Processing active spells...")
+    Debug.frameLog("EFFECTS", "Processing active spells...")
     
     -- Process each active spell's effects
     for _, activeSpell in pairs(activeSpells) do
@@ -677,22 +730,71 @@ local function updateBuffDisplay()
     end
 end
 
+-- Function to recreate UI when settings change (defined after updateBuffDisplay)
+local function onSettingsChanged()
+    print("[BuffTimer] Settings changed - redrawing buff display") -- Always print this
+    
+    -- Test what debug setting is returning
+    Debug.log("SETTINGS_CHECK", "Testing debug setting value")
+    
+    Debug.ui("Settings changed - redrawing buff display")
+    
+    -- Completely destroy and recreate the UI like voshondsQuickSelect does
+    if root then
+        pcall(function() 
+            root:destroy() 
+            root = nil
+        end)
+    end
+    
+    -- Clear all existing buffs so they get recreated with new settings
+    activeBuffs = {}
+    
+    -- Recreate the UI with fresh settings
+    root = createUI()
+    
+    -- Redraw the buff display with current settings
+    updateBuffDisplay()
+end
+
 -- Initialize the buff timer system
 local function initialize()
-    print("BuffTimer: Initializing buff display system")
+    Debug.ui("Initializing buff display system")
+    
+    -- Check if mod is enabled
+    if not isModEnabled() then
+        Debug.ui("Mod is disabled in settings, skipping initialization")
+        return
+    end
     
     -- Initial update after a short delay
     async:newUnsavableSimulationTimer(1.0, function()
-        print("BuffTimer: Running initial update")
+        Debug.ui("Running initial update")
         updateBuffDisplay()
         
         -- Start continuous updates using time.runRepeatedly
-        print("BuffTimer: Starting continuous updates every " .. UPDATE_INTERVAL .. " seconds")
-        local stopTimer = time.runRepeatedly(updateBuffDisplay, UPDATE_INTERVAL)
-        print("BuffTimer: Continuous update timer started")
+        local updateInterval = getUpdateInterval()
+        Debug.ui("Starting continuous updates every " .. updateInterval .. " seconds")
+        local stopTimer = time.runRepeatedly(updateBuffDisplay, updateInterval)
+        Debug.ui("Continuous update timer started")
     end)
 end
 
 -- Start the system
-print("BuffTimer: Starting initialization")
-initialize() 
+Debug.ui("Starting initialization")
+initialize()
+
+-- Subscribe to settings changes (must be after all functions are defined)
+pcall(function()
+    -- Subscribe to all our settings sections like voshondsQuickSelect does
+    local mainSettings = storage.playerSection("SettingsBuffTimersMain")
+    local visualSettings = storage.playerSection("SettingsBuffTimersVisual") 
+    local debugSettings = storage.playerSection("SettingsBuffTimersDebug")
+    
+    mainSettings:subscribe(async:callback(onSettingsChanged))
+    visualSettings:subscribe(async:callback(onSettingsChanged))
+    debugSettings:subscribe(async:callback(onSettingsChanged))
+    
+    print("[BuffTimer] Subscribed to all settings sections for buff display redraw")
+    Debug.ui("Subscribed to all settings sections for buff display redraw")
+end) 
