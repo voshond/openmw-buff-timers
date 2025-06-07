@@ -104,4 +104,4 @@ git push origin "v$version"
 
 Write-Host "Deploy completed successfully!" -ForegroundColor Green
 Write-Host "GitHub Actions workflow will now create the release automatically." -ForegroundColor Cyan
-Write-Host "Check the progress at: https://github.com/voshond/openmw-takeall/actions" -ForegroundColor Cyan 
+Write-Host "Check the progress at: https://github.com/voshond/openmw-buff-timers/actions" -ForegroundColor Cyan 

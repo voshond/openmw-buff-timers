@@ -5,7 +5,7 @@ param(
 # Set paths
 $sourceDir = Get-Location
 $outputDir = Join-Path $sourceDir "dist"
-$packageName = "openmw-mapkey-v$version"
+$packageName = "openmw-bufftimers-v$version"
 $packageDir = Join-Path $outputDir $packageName
 $zipFile = Join-Path $outputDir "$packageName.zip"
 
@@ -19,13 +19,15 @@ New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
 
 # Define files/directories to include
 $includes = @(
-    "scripts\mapkey",
-    "mapkey.omwscripts"
+    "scripts\bufftimers",
+    "textures",
+    "bufftimers.omwscripts"
 )
 
 # Define files/directories to exclude
 $excludes = @(
     "scripts\Example",
+    "Sample Projects",
     ".cursorrules",
     "debug.ps1",
     ".git",
