@@ -69,7 +69,6 @@ Contributions are welcome! Feel free to submit pull requests or open issues on t
 ## Credits
 
 **Author**: voshond  
-**Version**: 1.0.1  
 **License**: See LICENSE file
 
 ## Changelog
