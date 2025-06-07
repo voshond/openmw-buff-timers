@@ -4,7 +4,6 @@ A modern buff timer system for OpenMW that displays active spell effects with ra
 
 ![image](https://github.com/user-attachments/assets/0a650c4b-29f4-495d-b154-39305783de4a)
 
-
 ## Features
 
 - **Visual Buff/Debuff Display**: Shows all active magical effects with custom icons
@@ -17,7 +16,7 @@ A modern buff timer system for OpenMW that displays active spell effects with ra
 
 ## Screenshots
 
-_Screenshots coming soon_
+![image](media/screenshot003.png)
 
 ## Installation
 
