@@ -1,0 +1,8 @@
+Mod: Voshond's Buff Timers
+Version: 1.0.0
+Author: voshond
+Description: Modern buff timer system with radial swipe cooldown visualization
+
+This mod displays active buffs and debuffs with radial swipe cooldown visualization 
+in the top-right corner of the screen. Icons grow from right to left, with newest 
+buffs appearing on the rightmost position. 

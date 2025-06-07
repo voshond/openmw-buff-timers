@@ -8,8 +8,9 @@ Clear-Host
 
 # Copy mod files to ModOrganizer folder
 $sourceDir = Get-Location
-$modDir = "C:\Users\Martin\AppData\Local\ModOrganizer\Morrowind\mods\voshond's Map Key (OpenMW)"
-$scriptsDir = "$modDir\scripts\mapKey"
+$modDir = "C:\Users\Martin\AppData\Local\ModOrganizer\Morrowind\mods\voshond's Buff Timers (OpenMW)"
+$scriptsDir = "$modDir\scripts\bufftimers"
+$texturesDir = "$modDir\textures"
 
 Write-Host " "
 Write-Host " "
@@ -67,7 +68,7 @@ Write-Host " "
 Write-Host " "
 Write-Host " "
 Write-Host " "
-Write-Host "NEW DEBUG"
+Write-Host "BUFF TIMERS DEBUG"
 
 
 # Check if target directory exists, create if not
@@ -81,15 +82,26 @@ if (-not (Test-Path $scriptsDir)) {
     Write-Host "Created scripts directory: $scriptsDir"
 }
 
+if (-not (Test-Path $texturesDir)) {
+    New-Item -ItemType Directory -Path $texturesDir -Force
+    Write-Host "Created textures directory: $texturesDir"
+}
+
 # Clean directories before copying to ensure a clean state
 if (Test-Path $scriptsDir) {
     Remove-Item -Path "$scriptsDir\*" -Recurse -Force
     Write-Host "Cleaned scripts directory"
 }
 
+if (Test-Path $texturesDir) {
+    Remove-Item -Path "$texturesDir\*" -Recurse -Force
+    Write-Host "Cleaned textures directory"
+}
+
 # Copy all relevant files
-Copy-Item -Path "$sourceDir\scripts\mapKey\*" -Destination $scriptsDir -Recurse -Force
-Copy-Item -Path "$sourceDir\mapkey.omwscripts" -Destination $modDir -Force
+Copy-Item -Path "$sourceDir\scripts\bufftimers\*" -Destination $scriptsDir -Recurse -Force
+Copy-Item -Path "$sourceDir\textures\*" -Destination $texturesDir -Recurse -Force
+Copy-Item -Path "$sourceDir\project.omwscripts" -Destination $modDir -Force
 Write-Host "Copied all mod files to $modDir"
 
 # Find the main OpenMW process - get all processes and filter for the game window
